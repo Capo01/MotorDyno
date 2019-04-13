@@ -39,7 +39,7 @@ HX711 scale;
 
 #include <RunningMedian.h> //https://github.com/RobTillaart/Arduino/tree/master/libraries/RunningMedian
 
-RunningMedian samples = RunningMedian(5);
+RunningMedian samples = RunningMedian(10); // RunningMedian(10) = median of 10 individual samples
 
 
 
@@ -54,21 +54,25 @@ void setup() {
   }
 
 void loop() {
-  
+
+  // read load cell value, filter it and convert to N.mm
   long x = scale.get_units(1);
-
   samples.add(x);
-
   float m = samples.getMedian();
+  float torque = -m * 0.009807 * 0.1 * 1000; // Convert mass in grams to N.m
+  //Serial.print("Torque (N.mm): ");
+  //Serial.println(torque);
 
-  Serial.println(m);
+  // read current sensor voltage and convert to current
+  float currentSensor = analogRead(A1); //current shunt reading (+- 30A with a 2.5V reading being 0A)
+  float current = ((currentSensor / 1024)* 60 - 30) * 1000; // converts voltage to current value in mA
+  //Serial.println(currentSensor); //for debug
+  //Serial.print("Odrive Current (A): ");
+  //Serial.println(current);
 
-  delay(12);
-  
-  //Serial.println(scale.get_units(1), 1);
-  //delay(12);
-  
-  //odrive_serial << "w axis0.muv1 " << 110.0f << '\n';
+  // write values to odrie using UART
+  odrive_serial << "w axis0.muv1 " << torque << '\n';
+  odrive_serial << "w axis0.muv2 " << current << '\n';
 
-  
+  delay(12); // 12 millisecond delay since this is the maximum update rate of the load cell
   }
