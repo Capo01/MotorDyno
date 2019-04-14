@@ -71,6 +71,7 @@ void loop() {
   //Serial.println(current);
 
   // write values to odrie using UART
+  // note that custom odrive firmware is required to create the new variables. Refer to this fork https://github.com/Capo01/ODrive
   odrive_serial << "w axis0.muv1 " << torque << '\n';
   odrive_serial << "w axis0.muv2 " << current << '\n';
 
