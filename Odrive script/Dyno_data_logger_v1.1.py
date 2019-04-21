@@ -161,13 +161,17 @@ def rpm_to_cpr(x):
 def temp_check()
     """
     Compares motor and MOSFET temperatures to max_safe_temp.
-    If exceeded, measurement paused until safe temp reached and an error printed to console.
+    If exceeded, measurement stopped, motor speed reduced to zero, controller made idle and an error printed to console.
     """
-    while my_odrive.axis0.muv3 >= max_safe_temp >= or my_odrive.axis0.motor.get_inverter_temp() >= max_safe_temp:
-        time.sleep(5)
+    global emergency_stop
+    
+    if my_odrive.axis0.muv3 >= max_safe_temp or my_odrive.axis0.motor.get_inverter_temp() >= max_safe_temp:
+        emergency_stop = True
         print('Warning: Maximum safe temperature (', max_safe_temp ' Deg C) exceeded.')
         print('Motor Temperature (Deg C): ', my_odrive.axis0.muv3 )
         print('MOSFET Temperature (Deg C): ', my_odrive.axis0.motor.get_inverter_temp())
+        odriveShutdown()
+
     return
 
 def measure_values():
@@ -277,10 +281,11 @@ def odriveShutdown():
         time.sleep(0.1)
     
     my_odrive.axis0.controller.vel_ramp_enable = False
+
     
-    if idel_on_shutdown == True:
+    if idel_on_shutdown == True or emergency_stop == True:
         # Calibrate motor and wait for it to finish
-        my_odrive.axis0.controller.config.control_mode = 1
+        my_odrive.axis0.requested_state = AXIS_STATE_IDLE
 
 def report_motor_parameters():
 
@@ -349,7 +354,7 @@ def motor_controller_loss_test():
     """
     for i in range(loss_est_num_steps)
         temp_check() # Check all temperatures are safe.
-    	my_odrive.axis0.motor.config.current_lim = i * loss_est_current_step
+    	my_odrive.axis0.motor.config.calibration_current = i * loss_est_current_step
         # Offset calibration used as a means for the motor to draw a large current without doing mechanical work.
         # Offset calibration also loads each phases evenly, resulting in even MOSFET and motor phase heating.
     	my_odrive.axis0.requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION 
