@@ -31,7 +31,7 @@ TO DO:  * Set-up second odrive and test motor readings.
 #output data text file set-up
 text_file_name              = 'odrive_loss.csv' # Name of output text file
 file_header_flag            = True 	# Set False to exclude the file header (name and unit at start of file)
-erase_file_on_startup_flag  = True 	# Set True to erase text file at the start of each run
+erase_file_on_startup_flag  = True 	# Set True to erase text file at the start of each run or between tests
 
 #logging parameters
 stabilise_time              = 0.5   # Time elapsed after setting parameters before measuring values [s]
@@ -292,7 +292,7 @@ def report_motor_parameters():
 		text_file.write(str(str(now))) # Add date and time to text file.
 		text_file.write('Absorber resistance (Ohm) ,' + str(absorber_resistance))
 		text_file.write('Absorber inductance (Henry) ,' + str(absorber_inductance))
-		text_file.write('Absorber Temperature (Dec) , ' + str(absorber_temperature))
+		text_file.write('Absorber Temperature (Dec) ,' + str(absorber_temperature))
 	
 	print("Saving complete.")
      
@@ -318,26 +318,31 @@ def no_load_speed_test():
 
     print("No-load speed test complete")
 
-def motor_controller_loss_estimation():
+def motor_controller_loss_test():
     """
-    Used to estimate the losses produced by the motor controller (odrive).
-    Sets motor to index search so that all phases experiences even heating and records values.
-    Checks that motor temperature is within specified range, increments current limit and repeats.
+    Estimates Odrive I^2R losses by incrementally increasing motor current.
+    Motor phase current and reported resistance report_motor_parameters() gives motor power draw.
+    Subtracting motor power draw from Odrive power draw (current shunt reading x Vbus) gives Odrive I^2R loss.
     """
     for i in range(loss_est_num_steps)
     	my_odrive.axis0.motor.config.current_lim = i * loss_est_current_step
-    	my_odrive.axis0.requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION
+        # Offset calibration used as a means for the motor to draw a large current without doing mechanical work.
+        # Offset calibration also loads each phases evenly, resulting in even MOSFET and motor phase heating.
+    	my_odrive.axis0.requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION 
     	time.sleep(stabilise_time)
     	write_values(measure_values())
 
-    	# Wait for motor to cool down if it is too hot
-    	# If the motor becomes too hot then its resistance will be very different to that measured at start-up.
+    	# If the motor becomes too hot then its resistance will be different to that measured at start-up.
+        # A higher than expected motor resistance will lead to an over-estimate Odrive I^2R losses.
     	while my_odrive.axis0.muv4 >= loss_est_max_motor_temp 
     		time.sleep(1)
     		print('Motor too hot. Motor Temp (DegC): ', my_odrive.axis0.muv4)
 
+######################## Measurement procedure ###########################
+# Note: To prevent different test from overwriting earlier results set erase_file_on_startup_flag to false.
 
 odriveStartup()
+report_motor_parameters()
+motor_controller_loss_test()
 #no_load_speed_test()
-motor_controller_loss_estimation()
 odriveShutdown()
