@@ -29,30 +29,28 @@ TO DO:  * Setup second odrive and test motor readings.
         
 """
 
-#output text file setup
+# output text file setup
 text_file_name              = 'pythontest.csv' # Name of output text file
-file_header_flag            = True # Set False to exclude the file header (name and unit at start of file)
-erase_file_on_startup_flag  = True # Set True to erase text file at the start of each run
+file_header_flag            = True  # Set True to include the file header (name and unit at start of file)
+erase_file_on_startup_flag  = True  # Set True to erase text file at the start of each run
 
-#logging parameters
-stabilise_time              = 0.5     # Time elapsed after setting parameters before measuring values [s]
+# logging parameters
+stabilise_time              = 0.5   # Time elapsed after setting parameters before measuring values [s]
 num_readings                = 10    # Number of readings to be averaged
 sleep_time                  = 0.01  # Wait time between readings. Arduino only outputs a reading every 10ms [s]
 
-# No-load speed test
-no_load_num_steps           = 70     # Number of steps to increment RPM and take a reading
+# no-load speed test
+no_load_num_steps           = 70    # Number of steps to increment RPM and take a reading
 no_load_speed_step          = 100   # Step size between readings [RPM]
 
 #Odrive setup
-calibrate_on_startup        = False
-idel_on_shutdown            = False
+calibrate_on_startup        = False # set true to have motor calibration run before testing
+idel_on_shutdown            = False # set true to return motor to ideal after testing is complete
 absorber_motor_current_lim  = 30    # motor current limit [A]
 encoder_cpr                 = 8192  # Encoder counts per rotation [CPR]
-test_brake_resistance       = 0.47  #  [Ohm]
-absorber_brake_resistance   = 2.0   #  [Ohm]
-shutdown_ramp_speed         = 100000 # Speed to slow down at end of test [counts/s/s]
-
-
+test_brake_resistance       = 0.47  # resistance of the brake resistor connected to test motor odrive[Ohm]
+absorber_brake_resistance   = 2.0   # resistance of the brake resistor connected to the absorber odrive[Ohm]
+shutdown_ramp_speed         = 1E6   # Speed to slow down at end of test [counts/s/s]
 
 """
 Test motor and motor controller measurement list.
