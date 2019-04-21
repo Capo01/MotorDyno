@@ -1,14 +1,12 @@
+from __future__ import print_function
+
+import odrive
+from odrive.enums import *
+import time
+import math
+import matplotlib.pyplot as plt
+
 import statistics
-import random
-# =============================================================================
-# from __future__ import print_function
-# import odrive
-# from odrive.enums import *
-# import time
-# import math
-# import matplotlib.pyplot as plt
-# 
-# =============================================================================
 
 """
 Odrive based motor dyno and data logger V1.1
@@ -33,21 +31,26 @@ TO DO:  * Setup second odrive and test motor readings.
 
 #output text file setup
 text_file_name              = 'pythontest.csv' # Name of output text file
-file_header_flag            = False # Set true to exclude the file
+file_header_flag            = True # Set False to exclude the file header (name and unit at start of file)
+erase_file_on_startup_flag  = True # Set True to erase text file at the start of each run
 
 #logging parameters
-stabilise_time              = 1     # Time elapsed after setting parameters before measuring values [s]
-speed_step                  = 100   # Step size between readings [RPM]
-num_readings                = 4     # Number of readings to be averaged
-delay_time                  = 12    # Wait time between readings [ms]
+stabilise_time              = 0.5     # Time elapsed after setting parameters before measuring values [s]
+num_readings                = 10    # Number of readings to be averaged
+sleep_time                  = 0.01  # Wait time between readings. Arduino only outputs a reading every 10ms [s]
+
+# No-load speed test
+no_load_num_steps           = 70     # Number of steps to incriment RPM and take a reading
+no_load_speed_step          = 100   # Step size between readings [RPM]
 
 #Odrive setup
 calibrate_on_startup        = False
+idel_on_shutdown            = False
 absorber_motor_current_lim  = 30    # motor current limit [A]
-encoder_cpr                 = 8192 # Encoder counts per rotation [CPR]
-
-test_brake_resistance
-absorber_brake_resistance
+encoder_cpr                 = 8192  # Encoder counts per rotation [CPR]
+test_brake_resistance       = 0.47  #  [Ohm]
+absorber_brake_resistance   = 2.0   #  [Ohm]
+shutdown_ramp_speed         = 100000 # Speed to slow down at end of test [counts/s/s]
 
 
 
@@ -69,77 +72,77 @@ measurement_list = [
 {
     'name'      :   'Input voltage',
     'unit'      :   'V',
-    'location'  :   'random.randrange(100)'#'(my_odrive.vbus_voltage)',
+    'location'  :   '(my_odrive.vbus_voltage)',
 },
 {
     'name'      :   'Input current',
     'unit'      :   'mA',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.muv2)',
+    'location'  :   '(my_odrive.axis0.muv2)',
 },
 {
     'name'      :   'Input Power',
     'unit'      :   'W',
-    'location'  :   'random.randrange(100)'# '(my_odrive.vbus_voltage * my_odrive.axis0.muv2 * 0.001)',
+    'location'  :   '(my_odrive.vbus_voltage * my_odrive.axis0.muv2 * 0.001)',
 },
 {
     'name'      :   'Test Motor Temperature',
     'unit'      :   'Deg C',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.muv3)',
+    'location'  :   '(my_odrive.axis0.muv3)',
 },
 {
     'name'      :   'Test motor FET temp',
     'unit'      :   'Deg C',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.motor.get_inverter_temp())',
+    'location'  :   '(my_odrive.axis0.motor.get_inverter_temp())',
 },
 {
     'name'      :   'Test motor q-axis current',
     'unit'      :   'A',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.motor.current_control.Iq_measured)',
+    'location'  :   '(my_odrive.axis0.motor.current_control.Iq_measured)',
 },
 {
     'name'      :   'Test motor d-axis current',
     'unit'      :   'A',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.motor.current_control.Id_measured)',
+    'location'  :   '(my_odrive.axis0.motor.current_control.Id_measured)',
 },
 {
     'name'      :   'Output Torque',
     'unit'      :   'N.mm',
-    'location'  :   'random.randrange(100)'# 'my_odrive.axis0.muv2',
+    'location'  :   'my_odrive.axis0.muv1',
 },
 {
     'name'      :   'Output Speed',
     'unit'      :   'rad.s',
-    'location'  :   'random.randrange(100)'# '((my_odrive.axis0.encoder.vel_estimate / 8192) * 2 * math.pi)',
+    'location'  :   '((my_odrive.axis0.encoder.vel_estimate / 8192) * 2 * math.pi)',
 },
 {
     'name'      :   'Output Power',
     'unit'      :   'W',
-    'location'  :   'random.randrange(100)'# '((my_odrive.axis0.encoder.vel_estimate / 8192) * 2 * math.pi) * (my_odrive.axis0.muv1) * 0.001',
+    'location'  :   '((my_odrive.axis0.encoder.vel_estimate / 8192) * 2 * math.pi) * (my_odrive.axis0.muv1) * 0.001',
 },
 {
     'name'      :   'Output Efficiency',
     'unit'      :   '%',
-    'location'  :   'random.randrange(100)'# '((((my_odrive.axis0.encoder.vel_estimate / 8192) * 2 * math.pi) * (my_odrive.axis0.muv1) * 0.001) / (my_odrive.vbus_voltage * my_odrive.axis0.muv2) * 100)',
+    'location'  :   '((((my_odrive.axis0.encoder.vel_estimate / 8192) * 2 * math.pi) * (my_odrive.axis0.muv1) * 0.001) / (my_odrive.vbus_voltage * my_odrive.axis0.muv2) * 100)',
 },
 {
     'name'      :   'Absorber Motor Temperature',
     'unit'      :   'Deg C',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.muv4)',
+    'location'  :   '(my_odrive.axis0.muv4)',
 },
 {
     'name'      :   'Absorber motor FET temp',
     'unit'      :   'Deg C',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.motor.get_inverter_temp())',
+    'location'  :   '(my_odrive.axis0.motor.get_inverter_temp())',
 },
 {
     'name'      :   'Absorber q-axis current',
     'unit'      :   'A',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.motor.current_control.Iq_measured)',
+    'location'  :   '(my_odrive.axis0.motor.current_control.Iq_measured)',
 },
 {
     'name'      :   'Absorber d-axis current',
     'unit'      :   'A',
-    'location'  :   'random.randrange(100)'# '(my_odrive.axis0.motor.current_control.Id_measured)',
+    'location'  :   '(my_odrive.axis0.motor.current_control.Id_measured)',
 }
 ]
 
@@ -152,7 +155,7 @@ def measure_values():
     """
     data_list = []   
        
-    # Measurement data to be stored in 'values'
+    # Measurement data to be stored in a new empty dict key called 'values'
     for i in range(len(measurement_list)):
         measurement_list[i]['value'] = []
     
@@ -161,6 +164,8 @@ def measure_values():
         for i in range(len(measurement_list)):
                 location = measurement_list[i]['location']
                 measurement_list[i]['value'].append(eval(location))
+                time.sleep(sleep_time) # odrive only outputs a reading every 10ms
+                
                     
     # Mean taken of measurements to filter out noise.
     for i in range(len(measurement_list)):
@@ -174,6 +179,7 @@ def write_values(data):
     
     """
     global file_header_flag
+    global erase_file_on_startup_flag
     name_list = []
     unit_list = []
     data_list = data
@@ -183,83 +189,101 @@ def write_values(data):
         name_list.append(measurement_list[i]['name'])
         unit_list.append(measurement_list[i]['unit'])
        
-    # Format the header data and write to file only once.    
-    with open(text_file_name,"w") as text_file:
+    # Format the header data  
+    with open(text_file_name,"a+") as text_file:
         name_list_formatted = ', '.join(str(e) for e in name_list) + '\n'
         unit_list_formatted = ', '.join(str(e) for e in unit_list) + '\n'
         data_list_formatted = ', '.join(str(e) for e in data_list) + '\n'
                             
-        if file_header_flag == False:
+        # Erase the contents of the text file from previou runs (need '0' when using r+ )
+        if erase_file_on_startup_flag == True:
+            text_file.truncate(0)
+            erase_file_on_startup_flag = False 
+
+        # Write header data to text file only once.
+        if file_header_flag == True:
             text_file.write(str(name_list_formatted))
             text_file.write(str(unit_list_formatted))
-            file_header_flag = True
+            file_header_flag = False
         
         # Write the data
         text_file.write(str(data_list_formatted))
         
-# =============================================================================
-# def odriveStartup():
-#     
-#     """
-#     Finds connected odrives and calibrates motors, sets closed loop control.
-#     """
-#     # Find a connected ODrive (this will block until you connect one)
-#     print("finding an odrive...")
-#     global my_odrive
-#     my_odrive = odrive.find_any()
-# 
-#     # Find an ODrive that is connected on the serial port /dev/ttyUSB0
-#     #my_drive = odrive.find_any("serial:/dev/ttyUSB0")
-# 
-#     if calibrate_on_startup == True:
-#             # Calibrate motor and wait for it to finish
-#         print("starting calibration...")
-#         my_odrive.axis0.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
-#         while my_odrive.axis0.current_state != AXIS_STATE_IDLE:
-#             time.sleep(0.5)
-# 
-#     my_odrive.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
-#     my_odrive.axis0.motor.config.current_lim = absorber_motor_current_lim
-#     print("now in closed loop control")
-# =============================================================================
+def odriveStartup():
+    
+    """
+    Finds connected odrives and calibrates motors, sets closed loop control.
+    """
+    # Find a connected ODrive (this will block until you connect one)
+    print("finding an odrive...")
+    global my_odrive
+    my_odrive = odrive.find_any()
+    print("odrive found...")
+    my_odrive.config.brake_resistance = absorber_brake_resistance
 
+    # Find an ODrive that is connected on the serial port /dev/ttyUSB0
+    #my_drive = odrive.find_any("serial:/dev/ttyUSB0")
 
-# =============================================================================
-# def odriveShutdown():
-#     
-#     """
-#     Stops motor and end of test, returns it to positional control mode.
-#     """
-#     my_odrive.axis0.controller.vel_setpoint = 0
-#     my_odrive.axis0.controller.config.control_mode = 1
-# =============================================================================
+    if calibrate_on_startup == True:
+            # Calibrate motor and wait for it to finish
+        print("starting calibration...")
+        my_odrive.axis0.requested_state = AXIS_STATE_FULL_CALIBRATION_SEQUENCE
+        while my_odrive.axis0.current_state != AXIS_STATE_IDLE:
+            time.sleep(0.5)
+
+    my_odrive.axis0.requested_state = AXIS_STATE_CLOSED_LOOP_CONTROL
+    my_odrive.axis0.motor.config.current_lim = absorber_motor_current_lim
+    print("now in closed loop control")
+
+def odriveShutdown():
+    
+    """
+    Stops motor and end of test, returns it to positional control mode.
+    """
+    print("Shutting down odrives")
+    my_odrive.axis0.controller.vel_ramp_enable = True
+    my_odrive.axis0.controller.config.vel_ramp_rate = shutdown_ramp_speed
+    my_odrive.axis0.controller.vel_ramp_target = 0
+
+    # wait for motors to slow down.
+    while my_odrive.axis0.encoder.vel_estimate != 0:
+        time.sleep(0.1)
+    
+    my_odrive.axis0.controller.vel_ramp_enable = False
+    
+    if idel_on_shutdown == True:
+        # Calibrate motor and wait for it to finish
+        my_odrive.axis0.controller.config.control_mode = 1
 
 def rpm_to_cpr(x):
     
     """
     Converts motor RPM to counts/s for use by motor controller.
     """
-    cpr = (x / 60)* encoder_cpr
-    return cpr;
+    return (x / 60)* encoder_cpr;
+     
 
 def no_load_speed_test():
     
     """
     Sets motor to velocity control mode.
-    Incriments speed by speed_step up to num_reading * speed_step.
+    Incriments speed by speed_step up to no_load_num_steps * no_load_speed_step.
     Logs data to text file at each speed.
     """
-
-    my_odrive.axis0.controller.config.control_mode = 2
+    my_odrive.axis0.controller.config.control_mode = 2  #set to velocity control mode
     print("now in velocity control mode")
+    print("Starting no-load speed test")
 
-    for i in range(num_readings):
-        my_odrive.axis0.controller.config.vel_limit = rpm_to_cpr(num_readings * speed_step) # [counts/s]
-        set_speed = i * speed_step
-        my_odrive.axis0.controller.vel_setpoint =  rpm_to_cpr(set_speed) # [counts/s]
-        print(set_speed)
-        time.sleep(sleep_time) # wait for speed to stabalise [s]
-        writevalues(measure_values())
+    for i in range(no_load_num_steps):
+        max_speed = (no_load_num_steps * no_load_speed_step) # First step is zero.
+        my_odrive.axis0.controller.config.vel_limit = rpm_to_cpr(max_speed) # [counts/s]
+        set_speed = i * no_load_speed_step
+        print(i, ' ', set_speed, ' ' , my_odrive.axis0.muv2)
+        my_odrive.axis0.controller.vel_setpoint = rpm_to_cpr(set_speed) # [counts/s]
+        time.sleep(stabilise_time) # wait for speed to stabalise [s]
+        write_values(measure_values())
+
+    print("No-load speed test complete")
 
 odriveStartup()
 no_load_speed_test()
