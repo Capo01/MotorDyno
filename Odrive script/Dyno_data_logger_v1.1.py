@@ -19,11 +19,11 @@ R. Parsons
 How to use this script:
 Set the name and type of text file you wish to output.
 Text file will be placed in the same directory as this script.
-Set the paratmers you wish to test to True.
+Set the parameters you wish to test to True.
 Set the speed range, speed step size and 
 
 TO DO:  * Setup second odrive and test motor readings.
-        * Add actual readings of the motor thermistors rather than just placeholdes
+        * Add actual readings of the motor thermistors rather than just placeholders
         * Add checks for motor and board temps to make sure they don't get too hot.
         * Add motor parameters at start of file (motor resistance, inductance etc.)
         
@@ -40,7 +40,7 @@ num_readings                = 10    # Number of readings to be averaged
 sleep_time                  = 0.01  # Wait time between readings. Arduino only outputs a reading every 10ms [s]
 
 # No-load speed test
-no_load_num_steps           = 70     # Number of steps to incriment RPM and take a reading
+no_load_num_steps           = 70     # Number of steps to increment RPM and take a reading
 no_load_speed_step          = 100   # Step size between readings [RPM]
 
 #Odrive setup
@@ -149,17 +149,17 @@ measurement_list = [
 def measure_values():
     """
     Measures the values outlined in measurement_list.
-    Takes multipule measurements as determiened by num_readings.
+    Takes multiple measurements as determined by num_readings
     Averages the measurements and returns the data as a list.
     
     """
     data_list = []   
        
-    # Measurement data to be stored in a new empty dict key called 'values'
+    # Measurement data to be stored in a new empty dictionary key called 'values'
     for i in range(len(measurement_list)):
         measurement_list[i]['value'] = []
     
-    # Multipule measurements taken for averaging as per num_readings
+    # Multiple measurements taken for averaging as per num_readings
     for x in range(num_readings):
         for i in range(len(measurement_list)):
                 location = measurement_list[i]['location']
@@ -195,7 +195,7 @@ def write_values(data):
         unit_list_formatted = ', '.join(str(e) for e in unit_list) + '\n'
         data_list_formatted = ', '.join(str(e) for e in data_list) + '\n'
                             
-        # Erase the contents of the text file from previou runs (need '0' when using r+ )
+        # Erase the contents of the text file from previous runs (need '0' when using r+ )
         if erase_file_on_startup_flag == True:
             text_file.truncate(0)
             erase_file_on_startup_flag = False 
@@ -267,7 +267,7 @@ def no_load_speed_test():
     
     """
     Sets motor to velocity control mode.
-    Incriments speed by speed_step up to no_load_num_steps * no_load_speed_step.
+    Increments speed by speed_step up to no_load_num_steps * no_load_speed_step.
     Logs data to text file at each speed.
     """
     my_odrive.axis0.controller.config.control_mode = 2  #set to velocity control mode
@@ -280,7 +280,7 @@ def no_load_speed_test():
         set_speed = i * no_load_speed_step
         print(i, ' ', set_speed, ' ' , my_odrive.axis0.muv2)
         my_odrive.axis0.controller.vel_setpoint = rpm_to_cpr(set_speed) # [counts/s]
-        time.sleep(stabilise_time) # wait for speed to stabalise [s]
+        time.sleep(stabilise_time) # wait for speed to stabilise [s]
         write_values(measure_values())
 
     print("No-load speed test complete")
