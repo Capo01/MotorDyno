@@ -28,38 +28,39 @@ TO DO:  * Set-up second odrive and test motor readings.
 
 #output data text file set-up
 text_file_name              = 'odrive_loss.csv' # Name of output text file
-file_header_flag            = True 	# Set False to exclude the file header (name and unit at start of file)
-erase_file_on_startup_flag  = True  # Set True to erase text file at the start of each run or between tests
+file_header_flag            = True 	            # Set False to exclude the file header (name and unit at start of file)
+erase_file_on_startup_flag  = True              # Set True to erase text file at the start of each run or between tests
 
 #logging parameters
-stabilise_time              = 1     # Time elapsed after setting parameters before measuring values [s]
-num_readings                = 10    # Number of readings to be averaged
-sleep_time                  = 0.01  # Wait time between readings. Arduino Mega only outputs a reading every 10 ms [s]
+stabilise_time              = 1                 # Time elapsed after setting parameters before measuring values [s]
+num_readings                = 10                # Number of readings to be averaged
+sleep_time                  = 0.01              # Wait time between readings. Arduino Mega only outputs a reading every 10 ms [s]
 
 #Odrive set-up
-calibrate_on_startup        = False # motor current limit [A] 
-idel_on_shutdown            = False # Encoder counts per rotation [CPR]
-calibration_current         = 40    # Current used during calibration
-absorber_motor_current_lim  = 30    # motor current limit [A]
-encoder_cpr                 = 8192  # Encoder counts per rotation [CPR]
-test_brake_resistance       = 0.47  # resistance of the brake resistor connected to test motor odrive[Ohm]
-absorber_brake_resistance   = 2.0   # resistance of the brake resistor connected to the absorber odrive[Ohm]
-shutdown_ramp_speed         = 1E6 	# Speed to slow down at end of test [counts/s/s]
-max_safe_temp               = 80    # Maximum allowable temperature for motor and MOSFETs [Deg C]
-emergency_stop_flag         = False # Set true if motor or controller temp goes outside set limits.
+calibrate_on_startup        = False             # motor current limit [A] 
+idel_on_shutdown            = False             # Encoder counts per rotation [CPR]
+calibration_current         = 10                # Current used during calibration
+absorber_motor_current_lim  = 30                # motor current limit [A]
+encoder_cpr                 = 8192              # Encoder counts per rotation [CPR]
+test_brake_resistance       = 0.47              # resistance of the brake resistor connected to test motor odrive[Ohm]
+absorber_brake_resistance   = 2.0               # resistance of the brake resistor connected to the absorber odrive[Ohm]
+shutdown_ramp_speed         = 1E6 	            # Speed to slow down at end of test [counts/s/s]
+max_safe_temp               = 80                # Maximum allowable temperature for motor and MOSFETs [Deg C]
+emergency_stop_flag         = False             # Set true if motor or controller temp goes outside set limits.
 
 # Motor parameter reporting
 text_file_name_motor_param	= 'Motor_parameter.csv' # Name of output text file
 
 # No-load speed test
-no_load_max_motor_speed     = 4000  # Maximum safe speed for motor. Note: Check encoder maximum RPM settings [RPM]
-no_load_speed_step          = 1000  # Step size between readings [RPM]
-no_load_max_vel_error       = 2     # Maximum allowable error between true motor speed and commanded speed [%]
+no_load_max_motor_speed     = 4000              # Maximum safe speed for motor. Note: Check encoder maximum RPM settings [RPM]
+no_load_speed_step          = 1000              # Step size between readings [RPM]
+no_load_max_vel_error       = 2                 # Maximum allowable error between true motor speed and commanded speed [%]
 
 # Motor controller power loss estimation
-loss_est_num_steps			= 14	# Number of steps to increment motor current and take a reading
-loss_est_current_step		= 5		# Current size between readings [A]
-loss_est_max_motor_temp		= 30	# Maximum motor temperature that a reading will be made at.
+loss_est_num_steps			= 14	            # Number of steps to increment motor current and take a reading
+loss_est_current_step		= 5		            # Current size between readings [A]
+loss_est_max_motor_temp		= 30	            # Maximum motor temperature that a reading will be made at.
+loss_est_motor_under_test   = 0                 # Motor to be tested. 0 = absorber, 1 = test motor.
 
 """
 Test motor and motor controller measurement list.
@@ -94,7 +95,7 @@ measurement_list = [
 {
     'name'      :   'Test Motor Temperature',
     'unit'      :   'Deg C',
-    'location'  :   '(my_odrive.axis0.muv3)',
+    'location'  :   '(motor_temp(1))',
 },
 {
     'name'      :   'Test motor FET temp',
@@ -110,6 +111,11 @@ measurement_list = [
     'name'      :   'Test motor d-axis current',
     'unit'      :   'A',
     'location'  :   '(my_odrive.axis0.motor.current_control.Id_measured)',
+},
+{
+    'name'      :   'Test motor Ical',
+    'unit'      :   'A',
+    'location'  :   '(my_odrive.axis0.motor.config.calibration_current)',
 },
 {
     'name'      :   'Output Torque',
@@ -139,7 +145,7 @@ measurement_list = [
 {
     'name'      :   'Absorber Motor Temperature',
     'unit'      :   'Deg C',
-    'location'  :   '(my_odrive.axis0.muv4)',
+    'location'  :   '(motor_temp(0))',
 },
 {
     'name'      :   'Absorber motor FET temp',
@@ -155,6 +161,11 @@ measurement_list = [
     'name'      :   'Absorber d-axis current',
     'unit'      :   'A',
     'location'  :   '(my_odrive.axis0.motor.current_control.Id_measured)',
+},
+{
+    'name'      :   'Absorber motor Ical',
+    'unit'      :   'A',
+    'location'  :   '(my_odrive.axis0.motor.config.calibration_current)',
 }
 ]
 
@@ -181,7 +192,7 @@ def temp_check():
 
     return
 
-def motor_temp():
+def motor_temp(x):
     """
     Reads motor temperature thermistor which is connected to Odrive's analog input pins.
     Motors sold by Odrive have inbuilt thermistor thermally connected to motor windings.
@@ -189,7 +200,7 @@ def motor_temp():
     Note: get_adc_voltage() returns a voltage.
     """
     # Odrive thermistor parameters: NTC (10k 1% 3435)
-
+    
     voltage_reference       = 3.3   # voltage used for thermistor readings.
     thermistor_nominal_val  = 1E4   # Thermistor resistance [Ohm]
     thermistor_coefficient  = 3435  # Thermistor coefficient
@@ -199,8 +210,18 @@ def motor_temp():
     absorber_motor_reading  = my_odrive.get_adc_voltage(3) # Read absorber motor ADC
     test_motor_reading      = my_odrive.get_adc_voltage(4) # Read test motor ADC
 
-    absorber_motor_temp = ((1/ ((math.log10(((series_resistor_val / (voltage_reference  / absorber_motor_reading - 1))/thermistor_nominal_val))/thermistor_coefficient) + 1.0 / (25 + 273.15))) - 273.15)
-    test_motor_temp = ((1/ ((math.log10(((series_resistor_val / (voltage_reference  / test_motor_reading - 1))/thermistor_nominal_val))/thermistor_coefficient) + 1.0 / (25 + 273.15))) - 273.15)
+    absorber_motor_temp_reading = ((1/ ((math.log10(((series_resistor_val / (voltage_reference  / absorber_motor_reading - 1))/thermistor_nominal_val))/thermistor_coefficient) + 1.0 / (25 + 273.15))) - 273.15)
+    test_motor_temp_reading = ((1/ ((math.log10(((series_resistor_val / (voltage_reference  / test_motor_reading - 1))/thermistor_nominal_val))/thermistor_coefficient) + 1.0 / (25 + 273.15))) - 273.15)
+    
+    if x == 0:
+        return absorber_motor_temp_reading;
+
+    if x == 1:
+        return test_motor_temp_reading;
+
+    print('Motor temp error: incorrect motor name entered.')
+    return;
+
 
 def measure_values():
     """
@@ -258,7 +279,7 @@ def write_values(data):
 
         # Write header data to text file only once.
         if file_header_flag == True:
-            text_file.write(str(datetime.datetime.now())) # Add date and time to text file.
+            text_file.write(str(datetime.datetime.now()) + '\n') # Add date and time to text file.
             text_file.write(str(name_list_formatted))
             text_file.write(str(unit_list_formatted))
             file_header_flag = False
@@ -278,6 +299,7 @@ def odriveStartup():
     my_odrive = odrive.find_any()
     print("odrive found...")
     my_odrive.config.brake_resistance = absorber_brake_resistance
+    my_odrive.axis0.motor.config.calibration_current = calibration_current
     temp_check() # Check all temperatures are safe.
 
     # Find an ODrive that is connected on the serial port /dev/ttyUSB0
@@ -297,7 +319,7 @@ def odriveStartup():
 def odriveShutdown():
     
     """
-    Stops motor and end of test, returns it to positional control mode.
+    Stops motor and end of test, sets motor to positional control mode.
     """
     print("Shutting down odrives")
     my_odrive.axis0.controller.config.control_mode = CTRL_MODE_VELOCITY_CONTROL
@@ -310,14 +332,16 @@ def odriveShutdown():
         time.sleep(0.5)
     
     my_odrive.axis0.controller.vel_ramp_enable = False
-    # Prevent motor returning to position zero at full speed when set to position control mode.
+    # Prevent motor being set to position zero at full speed when set to position control mode.
+    print("Setting to position control mode")
     my_odrive.axis0.controller.pos_setpoint = my_odrive.axis0.encoder.pos_estimate 
     my_odrive.axis0.controller.config.control_mode = CTRL_MODE_POSITION_CONTROL
-
     
     if idel_on_shutdown == True or emergency_stop_flag == True:
         # Calibrate motor and wait for it to finish
         my_odrive.axis0.requested_state = AXIS_STATE_IDLE
+
+    print("Shut down complete.")
 
 def report_motor_parameters():
     """
@@ -399,27 +423,40 @@ def motor_controller_loss_test():
     Motor phase current and reported motor resistance report_motor_parameters() gives motor power draw.
     Subtracting motor power draw from Odrive power draw (current shunt reading x Vbus) gives Odrive I^2R loss.
     """
+    print('Starting motor controller loss test..')
+    print('Reading No., Calibration current (A), Motor temperature (DegC)')
+    my_odrive.axis0.requested_state = AXIS_STATE_IDLE
     for i in range(loss_est_num_steps):
         temp_check() # Check all temperatures are safe.
-        my_odrive.axis0.motor.config.calibration_current = i * loss_est_current_step
-        # Offset calibration used as a means for the motor to draw a large current without doing mechanical work.
-        # Offset calibration also loads each phases evenly, resulting in even MOSFET and motor phase heating.
-        my_odrive.axis0.requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION 
-        time.sleep(stabilise_time)
-        write_values(measure_values())
 
         # If the motor becomes too hot then its resistance will be different to that measured at start-up.
         # A higher than expected motor resistance will lead to an over-estimate Odrive I^2R losses.
-        while my_odrive.axis0.muv4 >= loss_est_max_motor_temp:
-            time.sleep(1)
-            print('Motor too hot. Motor Temp (DegC): ', my_odrive.axis0.muv4)
+        while motor_temp(loss_est_motor_under_test) >= loss_est_max_motor_temp:
+            time.sleep(2)
+            print('Motor too hot. Motor Temp (DegC): ', motor_temp(loss_est_motor_under_test))
+
+        my_odrive.axis0.motor.config.calibration_current = (i + 1) * loss_est_current_step # Can not calibrate with current = 0
+        # Offset calibration used as a means for the motor to draw a large current without doing mechanical work.
+        # Offset calibration also loads each phases evenly, resulting in even MOSFET and motor phase heating.
+        
+        x = 0
+        my_odrive.axis0.requested_state = AXIS_STATE_ENCODER_OFFSET_CALIBRATION
+        while my_odrive.axis0.current_state != AXIS_STATE_IDLE: # wait for offset calibration to finish before incrementing current 
+            if x == 0:
+                print(i, ' ', my_odrive.axis0.motor.config.calibration_current, ' ', motor_temp(loss_est_motor_under_test))
+                time.sleep(stabilise_time)
+                write_values(measure_values())
+                x = 1 # Write to file only once per calibration current setting
+            time.sleep(0.5)
+
+    my_odrive.axis0.motor.config.calibration_current = calibration_current # set calibration current back to default value.
+    print('Motor controller loss test complete.')
 
 ######################## Measurement procedure ###########################
 # Note: To prevent different test from overwriting earlier results set erase_file_on_startup_flag to false.
 
 odriveStartup()
-motor_temp()
-#report_motor_parameters()
-#motor_controller_loss_test()
+report_motor_parameters()
+motor_controller_loss_test()
 #no_load_speed_test()
-#odriveShutdown()
+odriveShutdown()
