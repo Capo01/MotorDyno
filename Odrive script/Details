@@ -1,0 +1,23 @@
+Arduino Mega 1280 used to capture load cell amplifer data (HX711)
+Load cell force converted to torque and converted to a 500 Hz PWM signal
+Due to the limited 8 bit resolution of the stock arduino library, an additional PWM library is used to increase this to 16bit.
+library can be found here https://code.google.com/archive/p/arduino-pwm-frequency-library/downloads
+Pin 11 used on arduino mega for PWM
+12 bit resolution at 500Hz
+The odrive range mapping is between 1000 and 2000 microseconds high-time
+Major problem with noise in the signal. needs to be filtered out. 
+Electricall isolating the loadcell from the motor mount help reduce most of the noise.
+
+Pololu ACS714 Current sensor -30A to 30A https://www.pololu.com/product/1187
+Signal read with arduino analog in with 1024 steps
+converted to PWM at 500Hz 12bit output 
+read with gpio pin 3
+ended up not using due to noise and problems with getting a zero reading
+
+Used a 20A 75mV current shunt with a sparkfun ADS1115 breakout board
+Current shunt placed on low side of PSU power to odrive
+x16 gain used (1bit = 0.0078125mV) with differential input
+
+
+
+

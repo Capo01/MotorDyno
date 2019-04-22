@@ -108,12 +108,13 @@ void loop() {
   
   //convert to mA
   float multiplier = 0.0078125F; //* ADS1115  16 x gain  +/- 0.256V  1 bit = 0.125mV  0.0078125mV
-  float correction_factor = 429.17; // Current shunt reads non-zero even with zero current..
-  float correction_scaler = 1.04; // Correct for error in the current shun as compared to a multimeter.
-  float voltage = (curren_shunt_reading_median * multiplier);
-  float current =((( voltage / 75 ) * 20000)  - correction_factor) * correction_scaler; // 75 mV for 20A on current shunt.
+  float correction_factor = 2.41; // Current shunt reads non-zero even with zero current..
+  float correction_scaler = 1.102; // Correct for error in the current shun as compared to a multimeter.
+  float voltage = (curren_shunt_reading_median * multiplier) + correction_factor;
+  float current =((( voltage / 75 ) * 20000)) * correction_scaler; // 75 mV for 20A on current shunt.
 
   //for serial plotter
+//Serial.println(voltage);
   Serial.print(torque);
   Serial.print(" ");
   Serial.println(current);
