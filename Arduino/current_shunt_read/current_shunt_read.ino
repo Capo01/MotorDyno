@@ -38,7 +38,7 @@ void loop(void)
   float correction_scaler = 1;
   //float multiplier = 0.0625F; //* ADS1115  @ +/- 2.048V gain (16-bit results) */
 
-  results = ads.readADC_Differential_2_3();
+  results = ads.readADC_Differential_0_1();
   float voltage = results * multiplier ;
   float current =(( voltage / 75 ) * 20000 * correction_scaler) - correction_factor; // 75 mV for 20A on current shunt.
     

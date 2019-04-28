@@ -3,6 +3,7 @@ import time
 import math
 import matplotlib.pyplot as plt
 
+<<<<<<< Updated upstream
 time_sleep = 2 # [s]
 speed_step = 100 # [RPM]
 max_speed = 3000 # [RPM]
@@ -10,6 +11,15 @@ num_readings = 10 # Number of readings to be averaged
 smoothing_factor = 0.5 #smoothing factor
 
 req_steps = max_speed / speed_step
+=======
+
+num_odrvies_to_find = 2
+odrives = odrive.find_any(find_multiple=num_odrvies_to_find)
+
+print('found {} ODrives'.format(len(odrives)))
+for odrv in odrives:
+    print(odrv.serial_number)
+>>>>>>> Stashed changes
 
 my_odrive.axis0.controller.config.control_mode = 2
 my_odrive.axis0.controller.config.vel_limit = (max_speed / 60) *8192 # [counts/s]
@@ -66,6 +76,23 @@ for x in range(100):
   mysample.append(my_odrive.axis0.controller.vel_ramp_target)
   myothersample.append(((8.27*my_odrive.axis0.motor.current_control.Iq_setpoint/150)))
 
+<<<<<<< Updated upstream
 plt.plot(mysample)
 plt.plot(myothersample)
 plt.show()
+=======
+# 	absorber_temp = ((1/ ((math.log10(((10000 / (3.3 / my_odrive.get_adc_voltage(2) - 1))/10000))/3435) + 1.0 / (25 + 273.15))) - 273)
+
+
+# ##### Example of how to plot data ######
+# mysample = []
+# myothersample = []
+# for x in range(100):
+#   time.sleep(0.1) # wait for steady state
+#   mysample.append(my_odrive.axis0.controller.vel_ramp_target)
+#   myothersample.append(((8.27*my_odrive.axis0.motor.current_control.Iq_setpoint/150)))
+
+# plt.plot(mysample)
+# plt.plot(myothersample)
+# plt.show()
+>>>>>>> Stashed changes

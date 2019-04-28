@@ -39,7 +39,7 @@ sleep_time                  = 0.01              # Wait time between readings. Ar
 #Odrive set-up
 calibrate_on_startup        = False             # motor current limit [A] 
 idel_on_shutdown            = False             # Encoder counts per rotation [CPR]
-calibration_current         = 10                # Current used during calibration
+calibration_current         = 40                # Current used during calibration
 absorber_motor_current_lim  = 30                # motor current limit [A]
 encoder_cpr                 = 8192              # Encoder counts per rotation [CPR]
 test_brake_resistance       = 0.47              # resistance of the brake resistor connected to test motor odrive[Ohm]
@@ -346,6 +346,8 @@ def odriveShutdown():
 def report_motor_parameters():
     """
 	Tests motor resistance and inductance and prints it to a separate text file.
+    Note: Choice of calibration current will impact motor resistance value.
+    A larger calibration current will tend to be more accurate.
 	"""
     temp_check() # Check all temperatures are safe.
     print("Testing motors...")
@@ -428,6 +430,7 @@ def motor_controller_loss_test():
     my_odrive.axis0.requested_state = AXIS_STATE_IDLE
     for i in range(loss_est_num_steps):
         temp_check() # Check all temperatures are safe.
+        print(i)
 
         # If the motor becomes too hot then its resistance will be different to that measured at start-up.
         # A higher than expected motor resistance will lead to an over-estimate Odrive I^2R losses.
@@ -458,5 +461,6 @@ def motor_controller_loss_test():
 odriveStartup()
 report_motor_parameters()
 motor_controller_loss_test()
+report_motor_parameters() # repeat to check motor resistance is still the same
 #no_load_speed_test()
 odriveShutdown()

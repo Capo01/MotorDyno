@@ -44,7 +44,7 @@ const long interval = 12; // Load cell outputs maximum of 80 SPS (every 12 ms)
 #include <RunningMedian.h> //https://github.com/RobTillaart/Arduino/tree/master/libraries/RunningMedian
 
 RunningMedian samples = RunningMedian(10);  // RunningMedian(10) = median of 10 individual samples
-RunningMedian current = RunningMedian(50); // RunningMedian(10) = median of 10 individual samples
+RunningMedian current = RunningMedian(100); // RunningMedian(10) = median of 10 individual samples
 
 
 // *****************  CJMCU-ADS1115 16B bit ADC set-up *******************
@@ -54,6 +54,8 @@ RunningMedian current = RunningMedian(50); // RunningMedian(10) = median of 10 i
 Adafruit_ADS1115 ads;  /* Use this for the 16-bit version */
 //Adafruit_ADS1015 ads;     /* Use this for the 12-bit version */
 
+int inc;
+float correction_factor;
 
 void setup() {
   Serial.begin(115200);
@@ -100,24 +102,37 @@ void loop() {
 
   // read current sensor voltage
   int16_t curren_shunt_reading;
-  curren_shunt_reading = ads.readADC_Differential_2_3();
+  curren_shunt_reading = ads.readADC_Differential_0_1();
   
   // filter the reading
   current.add(curren_shunt_reading);
   float curren_shunt_reading_median = current.getMedian();
   
   //convert to mA
-  float multiplier = 0.0078125F; //* ADS1115  16 x gain  +/- 0.256V  1 bit = 0.125mV  0.0078125mV
-  float correction_factor = 2.41; // Current shunt reads non-zero even with zero current..
-  float correction_scaler = 1.102; // Correct for error in the current shun as compared to a multimeter.
-  float voltage = (curren_shunt_reading_median * multiplier) + correction_factor;
+  float multiplier = 0.125F; //* ADS1115  1x gain   +/- 4.096V  1 bit = 2mV      0.125mV
+  float raw_voltage = curren_shunt_reading_median * multiplier;
+  inc ++;
+  if (inc == 50) {
+    // After 50 readings have been taken, set the current shunt correction factor to zero out the current shunt reading.
+    correction_factor = raw_voltage; // Current shunt reads non-zero even with zero current..
+    }
+  float correction_scaler = 1.1; // Correct for error in the current shun as compared to a multimeter.
+  float voltage = raw_voltage - correction_factor ;
   float current =((( voltage / 75 ) * 20000)) * correction_scaler; // 75 mV for 20A on current shunt.
 
   //for serial plotter
-//Serial.println(voltage);
-  Serial.print(torque);
-  Serial.print(" ");
-  Serial.println(current);
+  
+Serial.print(correction_factor);
+Serial.print(" ");
+Serial.print(raw_voltage);
+Serial.print(" ");
+Serial.print(voltage);
+Serial.print(" ");
+Serial.println(current);
+
+//  Serial.print(torque);
+//  Serial.print(" ");
+//  Serial.println(current);
 
   // write values to Odrive using UART
   // note that custom odrive firmware is required to create the new variables. Refer to this fork https://github.com/Capo01/ODrive
